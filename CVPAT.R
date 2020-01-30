@@ -52,9 +52,8 @@ CVPAT <- function(MV, CVFolds, Model1, Model2, hypothesis, BootSamp, boot.Di=FAL
   avg_losses <- list(avg_losses_M1 = c("avg_loss_M1" = avg_loss_M1, avg_loss_sep_lv_M1),
                      avg_losses_M2 = c("avg_loss_M2" = avg_loss_M2, avg_loss_sep_lv_M2))
   # Save results
-  AllResults$boot.p.values <- cbind("p.value.perc.t"=Boot_res["p.value.perc.t"],
-                                    "p.value.b.v.t"=Boot_res["p.value.var.ttest"],
-                                    "p.value.perc.D"=Boot_res["p.value.perc.D"])
+  AllResults$boot.p.values <- c(Boot_res["p.value.perc.t"],Boot_res["p.value.var.ttest"],Boot_res["p.value.perc.D"])
+  names(AllResults$boot.p.values) <- c("p.value.perc.t", "p.value.b.v.t", "p.value.perc.D")
   AllResults$losses <- list(case_wise_losses = Losses, avg_losses = avg_losses)
   AllResults$t.stat <- cbind("t.stat"=t.stat,"t.stat.b.v"=Boot_res["t.stat.b.v"])
   AllResults$p.value <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$p.value
