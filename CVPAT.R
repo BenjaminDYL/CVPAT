@@ -1,4 +1,7 @@
-CVPAT <- function(MV, CVFolds, Model1, Model2, testtype, BootSamp, boot.Di=FALSE, seed=FALSE, scale = TRUE){
+CVPAT <- function(MV, CVFolds, Model1, Model2, hypothesis, BootSamp, boot.Di=FALSE, seed=FALSE, scale = TRUE){
+  if(hypothesis == "M1_better_out_of_sample_than_M2"){testtype = "greater"}
+  if(hypothesis == "M1!=M2"){testtype = "two.sided"}
+  
   if (seed==FALSE) {
   }
   else{

@@ -59,9 +59,12 @@ source("CVPAT.R")
 res_CVPAT <- CVPAT(MV=corp_rep,
                    CVFolds = 10,Model1=AM,Model2 = PM,
                    testtype=c("greater"),BootSamp = 2000,boot.Di = T,seed=TRUE,scale=TRUE)
-# Bootstrapped p-values
+# Average losses for each model (PM has slightly lower loss than AM)
+res_CVPAT$losses$avg_losses$avg_losses_M1
+res_CVPAT$losses$avg_losses$avg_losses_M2
+# Bootstrapped p-values 
 res_CVPAT$boot.p.values
-# 
-res_CVPAT$losses$LossM1_sepLV
-
-
+# non-bootstrapped p-value
+res_CVPAT$p.value
+# non-bootstrapped confidence interval
+res_CVPAT$conf.int
