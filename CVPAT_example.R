@@ -58,7 +58,7 @@ AM <- list(inner = inner_AM,reflective = reflective,formative = formative)
 source("CVPAT.R")
 res_CVPAT <- CVPAT(MV=corp_rep,
                    CVFolds = 10,Model1=AM,Model2 = PM,
-                   hypothesis="M1_better_out_of_sample_than_M2",BootSamp = 2000,boot.Di = T,seed=FALSE,scale=TRUE)
+                   hypothesis="M1_better_out_of_sample_than_M2",BootSamp = 2000,boot.Di = T,seed=FALSE)
 # Average losses for each model (PM has slightly lower loss than AM)
 res_CVPAT$losses$avg_losses$avg_losses_M1
 res_CVPAT$losses$avg_losses$avg_losses_M2

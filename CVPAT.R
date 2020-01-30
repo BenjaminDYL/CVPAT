@@ -1,4 +1,4 @@
-CVPAT <- function(MV, CVFolds, Model1, Model2, hypothesis, BootSamp, boot.Di=FALSE, seed=FALSE, scale = TRUE){
+CVPAT <- function(MV, CVFolds, Model1, Model2, hypothesis, BootSamp, boot.Di=FALSE, seed=FALSE){
   if(hypothesis == "M1_better_out_of_sample_than_M2"){testtype = "greater"}
   if(hypothesis == "M1!=M2"){testtype = "two.sided"}
   
@@ -12,10 +12,8 @@ CVPAT <- function(MV, CVFolds, Model1, Model2, hypothesis, BootSamp, boot.Di=FAL
   
   AllResults <- list(boot.p.values = NULL, losses = NULL, t.stat = NULL, p.value = NULL, conf.int = NULL, conv.fail = NULL)
   N <- nrow(MV)
-  if (scale == TRUE) {
-    MV <- scale(MV, center = TRUE, scale = TRUE)
-  }
   # Calculate losses and corresponding t-statistic
+  MV <- scale(MV, center = TRUE, scale = TRUE)
   Losses <- LossFun(N,MV,CVFolds,Model1$inner,Model1$reflective,Model1$formative,Model2$inner,Model2$reflective,Model2$formative)
   t.stat <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$statistic
   #Bootstrap on D_i's
