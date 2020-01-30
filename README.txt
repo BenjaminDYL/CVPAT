@@ -16,6 +16,13 @@ Model1: The model specifications as required by the matrixpls
 Model2: The structure is the same as for Model1, but specifications is
 	for Model2.
 
+hypothesis: The hypothesis to test. If hypothesis = "M1_better_out_of_sample_than_M2"
+	    then CVPAT will test if M1 has a significantly better out-of-sample
+	    performance than M2. 
+	    If hypothesis = "M1!=M2" then CVPAT will test if the out-of-sample
+	    performance between M1 and M2 is significantly different from 
+	    each other.		
+
 BootSamp: The number of bootstrap resamples
 
 boot.Di: If TRUE, bootstrapping will be conducted on the losses

@@ -1,4 +1,7 @@
+#setwd("PATH TO THE FOLDER WHERE corp_rep.rda and CVPAT.R is located")
 # Load required packages --------------------------------------------------
+#install.packages("matrixpls")
+#install.packages("cvTools")
 library(matrixpls)
 library(cvTools)
 
@@ -54,8 +57,9 @@ colnames(inner_AM) <- rownames(inner_AM)
 AM <- list(inner = inner_AM,reflective = reflective,formative = formative)
 
 # Model comparison with CVPAT ---------------------------------------------
-# Load CVPAT function
-source("CVPAT.R")
+# Load CVPAT function 
+source("CVPAT.R") #(you need to specify the path to CVPAT.R relative to your working directory)
+
 res_CVPAT <- CVPAT(MV=corp_rep,
                    CVFolds = 10,Model1=AM,Model2 = PM,
                    hypothesis="M1_better_out_of_sample_than_M2",BootSamp = 2000,boot.Di = T,seed=FALSE)
