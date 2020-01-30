@@ -7,63 +7,61 @@ CVPAT <- function(MV, CVFolds, Model1, Model2, testtype, BootSamp, boot.Di=FALSE
     set.seed(seed)
   }
   
-  AllResults <- list(boot.p.values = NULL, losses = NULL, t.stat = NULL, p.value = NULL, conf.int = NULL)
+  AllResults <- list(boot.p.values = NULL, losses = NULL, t.stat = NULL, p.value = NULL, conf.int = NULL, conv.fail = NULL)
   N <- nrow(MV)
   if (scale == TRUE) {
     MV <- scale(MV, center = TRUE, scale = TRUE)
   }
+  # Calculate losses and corresponding t-statistic
+  Losses <- LossFun(N,MV,CVFolds,Model1$inner,Model1$reflective,Model1$formative,Model2$inner,Model2$reflective,Model2$formative)
+  t.stat <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$statistic
   #Bootstrap on D_i's
   if (boot.Di == TRUE) {
-    Losses <- LossFun(N,MV,CVFolds,Model1$inner,Model1$reflective,Model1$formative,Model2$inner,Model2$reflective,Model2$formative)
-    t.stat <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$statistic
     if (BootSamp==0) {
-      Boot_di <- rep(NaN,5)
-      names(Boot_di) <- c("OrgTtest.t", "p.value_perc_Ttest", "tstat_boot_Var", "p.value_var_ttest", "p.value_perc_D")
+      Boot_res <- rep(NaN,5)
+      names(Boot_res) <- c("OrgTtest.t", "p.value_perc_Ttest", "tstat_boot_Var", "p.value_var_ttest", "p.value_perc_D")
     }
     if (BootSamp>0) {
-      Boot_di<-Bootstrap_di(Losses$LossM1, Losses$LossM2, BootSamp, testtype, N)
+      Boot_res<-Bootstrap_di(Losses$LossM1, Losses$LossM2, BootSamp, testtype, N)
     }
-    # Output results from bootstrap on D_i's
-    AllResults[[1]] <- cbind("p.value.perc.t"=Boot_di["p.value_perc_Ttest"],
-                             "p.value.b.v.t"=Boot_di["p.value_var_ttest"],
-                             "p.value.perc.D"=Boot_di["p.value_perc_D"])
-    AllResults[[2]] <- Losses
-    AllResults[[3]] <- cbind("t.stat"=t.stat,"t.stat.b.v"=Boot_di["tstat_boot_Var"])
-    AllResults[[4]] <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$p.value
-    AllResults[[5]] <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$conf.int
     
   }
   # Bootstrap on MV
   if (boot.Di == FALSE) {
-    Losses <- LossFun(N,MV,CVFolds,Model1$inner,Model1$reflective,Model1$formative,Model2$inner,Model2$reflective,Model2$formative)
-    mv.org.ttest<-t.test(Losses$LossM2,Losses$LossM1,mu=0,alternative=testtype, paired=TRUE)$statistic
     Di <- Losses$LossM2 - Losses$LossM1
     D.bar <- mean(Di)
     if (BootSamp==0) {
-      boot_MV <- rep(NaN, 5)
-      names(boot_MV) <- c("p.value.perc.t", "p.value_var_ttest", "p.value_perc_D",
-                          "t.stat.b.v", "prop.non.conv")
+      Boot_res <- rep(NaN, 5)
+      names(Boot_res) <- c("p.value.perc.t", "p.value.var.ttest", "p.value.perc.D",
+                           "t.stat.b.v", "prop.non.conv")
     }
     if (BootSamp>0) {
-      boot_MV <- Bootstrap_MV(mv.org.ttest, Di, D.bar, N,MV,CVFolds,InnerSpecM1,ReflecSpecM1,FormSpecM1,InnerSpecM2,ReflecSpecM2,FormSpecM2, BootSamp)
+      Boot_res <- Bootstrap_MV(t.stat, Di, D.bar, N, testtype, MV,CVFolds,Model1$inner,Model1$reflective,Model1$formative,
+                               Model2$inner,Model2$reflective,Model2$formative, BootSamp)
+      AllResults$conv.fail <- Boot_res["prop.non.conv"]
     }
-    # Save results from bootstrapping on MV
-    
-    AllResults[[1]] <- cbind("p.value.perc.t" = boot_MV["p.value.perc.t"], "p.value.b.v.t" = boot_MV["p.value_var_ttest"],
-                             "p.value.perc.D" = boot_MV["p.value.perc.D"])
-    AllResults[[2]] <- Losses
-    AllResults[[3]] <- cbind("t.stat"=mv.org.ttest,"t.stat.b.v"=boot_MV["t.stat.b.v"])
-    AllResults[[4]] <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$p.value
-    AllResults[[5]] <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$conf.int
-    AllResults$conv.fail <- boot_MV["prop.non.conv"]
-    
-    
   }
+  # Calculate average loss
+  avg_loss_M1 <- mean(Losses$LossM1)
+  avg_loss_M2 <- mean(Losses$LossM2)
+  avg_loss_sep_lv_M1 <- unlist(lapply(Losses$LossM1_sepLV, function(x) mean(x)))
+  avg_loss_sep_lv_M2 <- unlist(lapply(Losses$LossM2_sepLV, function(x) mean(x)))
+  avg_losses <- list(avg_losses_M1 = c("avg_loss_M1" = avg_loss_M1, avg_loss_sep_lv_M1),
+                     avg_losses_M2 = c("avg_loss_M2" = avg_loss_M2, avg_loss_sep_lv_M2))
+  # Save results
+  AllResults$boot.p.values <- cbind("p.value.perc.t"=Boot_res["p.value.perc.t"],
+                                    "p.value.b.v.t"=Boot_res["p.value.var.ttest"],
+                                    "p.value.perc.D"=Boot_res["p.value.perc.D"])
+  AllResults$losses <- list(case_wise_losses = Losses, avg_losses = avg_losses)
+  AllResults$t.stat <- cbind("t.stat"=t.stat,"t.stat.b.v"=Boot_res["t.stat.b.v"])
+  AllResults$p.value <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$p.value
+  AllResults$conf.int <- t.test(Losses$LossM2,Losses$LossM1,alternative = testtype, paired=TRUE)$conf.int
   
-  AllResults
+  return(AllResults)
 }
 
 # Helpers -----------------------------------------------------------------
+# Loss function
 LossFun <- function(N,MV,CVFolds,InnerSpecM1,ReflecSpecM1,FormSpecM1,InnerSpecM2,ReflecSpecM2,FormSpecM2) {
   # Relation between MV and LV
   MVLVrelM1<-ReflecSpecM1+t(FormSpecM1)
@@ -206,21 +204,24 @@ Bootstrap_di <- function (LossM1,LossM2,BootSamp,testtype, N){
       p.value_perc_D=0
     }
   }
-  Results <- c("OrgTtest"=OrgTtest, "p.value_perc_Ttest"=p.value_perc_Ttest,
-               "tstat_boot_Var" = tstat_boot_Var, "p.value_var_ttest" = p.value_var_ttest,
-               "p.value_perc_D" = p.value_perc_D)
+  Results <- c("OrgTtest"=OrgTtest, "p.value.perc.t"=p.value_perc_Ttest,
+               "t.stat.b.v" = tstat_boot_Var, "p.value.var.ttest" = p.value_var_ttest,
+               "p.value.perc.D" = p.value_perc_D)
   return(Results)
 }
 # Bootstrap on MV
-Bootstrap_MV <- function(mv.org.ttest, Di, D.bar, N,MV,CVFolds,InnerSpecM1,ReflecSpecM1,FormSpecM1,InnerSpecM2,ReflecSpecM2,FormSpecM2, BootSamp){
+Bootstrap_MV <- function(mv.org.ttest, Di, D.bar, N, testtype, MV,CVFolds,InnerSpecM1,ReflecSpecM1,FormSpecM1,InnerSpecM2,ReflecSpecM2,FormSpecM2, BootSamp){
   b.t.stat <- rep(0,BootSamp)
   b.D.bar <- rep(0,BootSamp)
+  # Run bootstrapping
   for (b in 1:BootSamp) {
     b.samp<-sample(1:N,N,replace = TRUE)
     b.MV<-MV[b.samp,]
-    b.Losses <- tryCatch(LossFun(N,b.MV,CVFolds,Model1$inner,Model1$reflective,Model1$formative,Model2$inner,Model2$reflective,Model2$formative),
+    # Use trycatch, to count proportion of times with non-convergence
+    b.Losses <- tryCatch(LossFun(N,b.MV,CVFolds,InnerSpecM1,ReflecSpecM1,FormSpecM1,InnerSpecM2,ReflecSpecM2,FormSpecM2),
                          warning = function(w) {NA},
                          error = function(e) {NA})
+    # Save as NA if non-convergence, else save bootstrapped calculated values
     if (is.na(b.Losses[1])) {
       b.D.bar[b] <- NA
       b.t.stat[b]<- NA
@@ -229,36 +230,43 @@ Bootstrap_MV <- function(mv.org.ttest, Di, D.bar, N,MV,CVFolds,InnerSpecM1,Refle
       b.t.stat[b]<-t.test(b.Losses$LossM2,b.Losses$LossM1,mu=D.bar,alternative=testtype, paired=TRUE)$statistic
     }
   }
+  # Proportion of non-convergent bootstrap runs
   prop.non.conv <- sum(is.na(b.D.bar))/length(b.D.bar)
+  # Number of bootstrap runs that did converge
   BootSamp<-length(b.D.bar[!is.na(b.D.bar)])
+  # Discarding non-convergent bootstrap runs
   b.D.bar<-b.D.bar[!is.na(b.D.bar)]
   b.t.stat<-b.t.stat[!is.na(b.t.stat)]
-  # Sorted t-statistics
+  
+  # Sorted bootstrapped t-statistics
   t.sort <- sort(b.t.stat, decreasing = FALSE)
+  # Bootstrapped variance on D_bar
   t.stat.b.v <- D.bar/sqrt(var(b.D.bar))
+  # Sorted bootstrapped D_bar
   D.bar.sort <- sort(b.D.bar, decreasing = FALSE)
+  # P-values for two-sided test
   if (testtype=="two.sided") {
     # Percentile-t method, p-value
     p.value.perc.t<-(sum(t.sort>abs(mv.org.ttest))+sum(t.sort<=(-abs(mv.org.ttest))))/BootSamp
     # Botstrapped variance of D.bar, p-value
-    p.value_var_ttest<-2*pt(-abs(t.stat.b.v),(N-1), lower.tail = TRUE)
+    p.value.var.ttest<-2*pt(-abs(t.stat.b.v),(N-1), lower.tail = TRUE)
     # percentile D.bar, p-value
-    p.value_perc_D<-(sum(D.bar.sort>abs(D.bar))+sum(D.bar.sort<=(-abs(D.bar))))/BootSamp
+    p.value.perc.D<-(sum(D.bar.sort>abs(D.bar))+sum(D.bar.sort<=(-abs(D.bar))))/BootSamp
   }
   if (testtype=="greater") {
     # Percentile-t method, p-value
-    p.value.perc.t<-1-(head(which(t.sort>mv.org.ttest),1)-1)/(BootSamp+1)
+    p.value.perc.t <- 1-(head(which(t.sort>mv.org.ttest),1)-1)/(BootSamp+1)
     if (length(which(t.sort>mv.org.ttest))==0){
       p.value.perc.t=0
     }
     # Botstrapped variance of D.bar, p-value
-    p.value_var_ttest<-pt(t.stat.b.v,(N-1), lower.tail = FALSE)
+    p.value.var.ttest <- pt(t.stat.b.v,(N-1), lower.tail = FALSE)
     # percentile D.bar, p-value
-    p.value_perc_D<-1-(head(which(D.bar.sort>D.bar),1)-1)/(BootSamp+1)
+    p.value.perc.D <- 1-(head(which(D.bar.sort>D.bar),1)-1)/(BootSamp+1)
     if (length(which(D.bar.sort>D.bar))==0){
-      p.value_perc_D=0
+      p.value.perc.D=0
     }
   }
-  return(c("p.value.perc.t" = p.value.perc.t, "p.value_var_ttest" = p.value_var_ttest, "p.value.perc.D" = p.value_perc_D,
+  return(c("p.value.perc.t" = p.value.perc.t, "p.value.var.ttest" = p.value.var.ttest, "p.value.perc.D" = p.value.perc.D,
            "t.stat.b.v" = t.stat.b.v, "prop.non.conv" = prop.non.conv))
 }
